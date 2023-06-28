@@ -8,28 +8,63 @@
     }
 
     .circle:hover {
-      fill: orange;
+      fill: yellow;
     }
+
     h1, h3, p {
       display: flex;
       justify-content: center;
+    }
+
+    .label {
+      font-family: sans-serif;
+      font-size: 12px;
+      fill: #666;
+    }
+
+    .legend-container {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex-wrap: wrap;
+      margin-top: 20px;
+    }
+
+    .legend-item {
+      display: flex;
+      align-items: center;
+      margin-right: 10px;
+    }
+
+    .legend-color {
+      width: 20px;
+      height: 20px;
+      margin-right: 5px;
+    }
+
+    .legend-text {
+      font-family: sans-serif;
+      font-size: 12px;
     }
   </style>
 </head>
 <body>
   <h1>Top Spotify Hits</h1>
   <h3>Questions:</h3>
-  <p>How does interactivity enhance the exploration of Top Spotify Hits?</p>
-  <p>Which artists have more hits?</p>
-  <p>What songs are you interested in hearing?</p>
+  <p>How does the energy level vary in the Top Spotify Hits?</p>
+  <p>Which artists have the most popular songs?</p>
+  <p>What are the key characteristics of the songs you are interested in hearing, based
+    on the Top Spotify Hits (2000-2019)?</p>
+  <div id="legend"></div>
   <svg id="chart"></svg>
 
   <script src="https://d3js.org/d3.v6.min.js"></script>
+  <script src="https://d3js.org/d3-scale-chromatic.v1.min.js"></script>
   <script>
     // load the Spotify dataset
     d3.csv('spotify.csv').then(function(data) {
-      // set up the chart dimensions
-      const margin = { top: 20, right: 20, bottom: 20, left: 40 };
+      // set up the chart 
+      const margin = { top: 20, right: 40, bottom: 40, left: 40 };
       const width = 1500 - margin.left - margin.right;
       const height = 900 - margin.top - margin.bottom;
 
@@ -41,6 +76,32 @@
         .append('g')
         .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
+      // calculate maximum energy and popularity values
+      const maxEnergy = d3.max(data, function(d) {
+        return +d.energy;
+      });
+
+      const maxPopularity = d3.max(data, function(d) {
+        return +d.popularity;
+      });
+
+      const maxDanceability = d3.max(data, function(d) {
+        return +d.danceability;
+      });
+
+      const lowEnergyColor = 'navy';
+      const highEnergyColor = 'pink';
+
+      // Define color scale using custom colors
+      const colorScale = d3.scaleOrdinal()
+        .domain([0, 1])
+        .range([lowEnergyColor, highEnergyColor]);
+
+      // radius based on energy
+      const radiusScale = d3.scaleLinear()
+        .domain([0, maxEnergy])
+        .range([5, 30]);
+
       // circles representing the songs
       const circles = svg
         .selectAll('.circle')
@@ -48,30 +109,28 @@
         .enter()
         .append('circle')
         .attr('class', 'circle')
-        .attr('r', function() {
-          const minRadius = 10; 
-          const maxRadius = 30; 
-          return Math.random() * (maxRadius - minRadius) + minRadius;
+        .attr('r', function(d) {
+          return radiusScale(+d.energy);
+        })
+        .attr('fill', function(d) {
+          return colorScale(+d.danceability);
         })
         .on('mouseover', function(d) {
           d3.select(this)
             .transition()
             .duration(200)
             .attr('r', 30)
-            .attr('fill', 'orange');
+            .attr('fill', 'yellow');
         })
         .on('mouseout', function(d) {
           d3.select(this)
             .transition()
             .duration(200)
-            .attr('r', function() {
-              const minRadius = 10; 
-              const maxRadius = 30; 
-              return Math.random() * (maxRadius - minRadius) + minRadius;
+            .attr('r', function(d) {
+              return radiusScale(+d.energy);
             })
-            .attr('fill', function() {
-              const randomColor = `rgb(${Math.random() * 255}, ${Math.random() * 255}, ${Math.random() * 255})`;
-              return randomColor;
+            .attr('fill', function(d) {
+              return colorScale(+d.danceability);
             });
         });
 
@@ -81,10 +140,11 @@
       });
 
       // simulation
-      const simulation = d3
-        .forceSimulation(data)
+      const simulation = d3.forceSimulation(data)
         .force('center', d3.forceCenter(width / 2, height / 2))
-        .force('collide', d3.forceCollide(25))
+        .force('collide', d3.forceCollide(function(d) {
+          return radiusScale(+d.energy) + 2;
+        }))
         .on('tick', ticked);
 
       // update circle positions 
@@ -96,11 +156,69 @@
         });
       }
 
-      // display the song titles
-      circles.append('title').text(function(d) {
-        return d.title;
-      });
+      // create the legend
+      const legend = d3.select('#legend');
+
+      // energy legend items
+      const energyLegendItems = [
+        { label: 'Low Energy', color: lowEnergyColor },
+        { label: 'High Energy', color: highEnergyColor }
+      ];
+
+      // energy legend 
+      const energyLegendItem = legend.selectAll('.energy-legend-item')
+        .data(energyLegendItems)
+        .enter()
+        .append('div')
+        .attr('class', 'legend-item');
+
+      // energy legend color 
+      energyLegendItem.append('div')
+        .attr('class', 'legend-color')
+        .style('background-color', function(d) {
+          return d.color;
+        });
+
+      // energy legend text
+      energyLegendItem.append('div')
+        .attr('class', 'legend-text')
+        .text(function(d) {
+          return d.label;
+        });
+
+      // danceability legend 
+      const danceabilityLegendItems = [
+        { label: 'Danceability', radius: radiusScale(maxDanceability) },
+        { label: 'Low Danceability', radius: radiusScale(0) },
+        { label: 'High Danceability', radius: radiusScale(maxDanceability) }
+      ];
+
+      const danceabilityLegendItem = legend.selectAll('.danceability-legend-item')
+        .data(danceabilityLegendItems)
+        .enter()
+        .append('div')
+        .attr('class', 'legend-item');
+
+      danceabilityLegendItem.append('div')
+        .attr('class', 'legend-color')
+        .style('width', function(d) {
+          return d.radius * 2 + 'px';
+        })
+        .style('height', function(d) {
+          return d.radius * 2 + 'px';
+        })
+        .style('border-radius', '50%')
+        .style('background-color', '#ccc');
+
+      // legend text
+      danceabilityLegendItem.append('div')
+        .attr('class', 'legend-text')
+        .text(function(d) {
+          return d.label;
+        });
+
     });
   </script>
 </body>
 </html>
+
