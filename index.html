@@ -68,7 +68,7 @@
       const width = 1500 - margin.left - margin.right;
       const height = 900 - margin.top - margin.bottom;
 
-      // svg element
+      // svg 
       const svg = d3
         .select('#chart')
         .attr('width', width + margin.left + margin.right)
@@ -76,7 +76,7 @@
         .append('g')
         .attr('transform', `translate(${margin.left}, ${margin.top})`);
 
-      // calculate maximum energy and popularity values
+      // energy and popularity values
       const maxEnergy = d3.max(data, function(d) {
         return +d.energy;
       });
@@ -91,8 +91,6 @@
 
       const lowEnergyColor = 'navy';
       const highEnergyColor = 'pink';
-
-      // Define color scale using custom colors
       const colorScale = d3.scaleOrdinal()
         .domain([0, 1])
         .range([lowEnergyColor, highEnergyColor]);
@@ -134,12 +132,12 @@
             });
         });
 
-      // song and artist information
+      // song and artist info
       circles.append('title').text(function(d) {
         return `${d.song} by ${d.artist}`;
       });
 
-      // simulation
+      // simulation/update circles 
       const simulation = d3.forceSimulation(data)
         .force('center', d3.forceCenter(width / 2, height / 2))
         .force('collide', d3.forceCollide(function(d) {
@@ -147,7 +145,6 @@
         }))
         .on('tick', ticked);
 
-      // update circle positions 
       function ticked() {
         circles.attr('cx', function(d) {
           return d.x;
@@ -156,30 +153,27 @@
         });
       }
 
-      // create the legend
+      // legend
       const legend = d3.select('#legend');
 
-      // energy legend items
+      // energy legend 
       const energyLegendItems = [
         { label: 'Low Energy', color: lowEnergyColor },
         { label: 'High Energy', color: highEnergyColor }
       ];
 
-      // energy legend 
       const energyLegendItem = legend.selectAll('.energy-legend-item')
         .data(energyLegendItems)
         .enter()
         .append('div')
         .attr('class', 'legend-item');
 
-      // energy legend color 
       energyLegendItem.append('div')
         .attr('class', 'legend-color')
         .style('background-color', function(d) {
           return d.color;
         });
 
-      // energy legend text
       energyLegendItem.append('div')
         .attr('class', 'legend-text')
         .text(function(d) {
